@@ -1,0 +1,119 @@
+<html>
+    <head>
+    </head>
+
+    <body>
+
+
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.11.338/pdf.min.js"></script>
+        <script>
+        var pdfjsLib = window['pdfjs-dist/build/pdf'];
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.11.338/pdf.worker.min.js';
+        </script>
+
+        <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
+        <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
+
+
+        <div class="container">
+            <canvas id="pdf_canvas"> </canvas>
+
+            <fieldset  id="field" style="border: 2px solid">
+                <legend>Odgovor:</legend>
+                <div>
+                <input type="radio" id="A" name="sol" />
+                <label for="A">A</label>
+                <input type="radio" id="B" name="sol"/>
+                <label for="B">B</label>
+                <input type="radio" id="C" name="sol"/>
+                <label for="C">C</label>
+                <input type="radio" id="D" name="sol"/>
+                <label for="D">D</label>
+                </div>
+                <div>
+                <button type="submit" onclick="CheckAnswer()">Preveri</button>
+                <button type="submit" id="next_question" onclick="NextQuestion()">Naslednje Vprašanje</button>
+                </div>
+            </fieldset>
+        </div>
+
+        <script src="/socket.io/socket.io.js"></script>
+        <script>
+        var socket = io.connect('', {query: 'id=' + window.location.href.substr(-9)});
+
+        socket.on("question", data => {
+            console.log(data); // 1
+            console.log(window.location.origin + "/pdf?id=" + window.location.href.substr(-9));
+            PDFStart(window.location.origin + "/pdf?id=" + window.location.href.substr(-9))
+
+            document.getElementById("field").style.borderColor = "white"
+
+            document.getElementsByName("sol").forEach(e => e.checked = false)
+        });
+
+        socket.on("answer", data => {
+            document.getElementById("field").style.borderColor = data == 1 ? "green" : "red"
+        });
+
+        socket.on("end_game", data => {
+            window.location.replace(window.location.origin + "/end?=" + window.location.href.substr(-9));
+        })
+        </script>
+    </body>
+</html>
+
+<script>
+            correct_answer = ""
+            function CheckAnswer()
+            {
+                value = ""
+                document.getElementsByName("sol").forEach((e) => {
+                    if(e.checked)
+                    {
+                        value = e.id
+                    }
+                } )
+                socket.emit("answer", value)
+            } 
+
+            function NextQuestion()
+            {
+                socket.emit("new_question")
+            }
+
+            const PDFStart = nameRoute => { 
+
+                let loadingTask = pdfjsLib.getDocument(nameRoute),
+                    pdfDoc = null,
+                    canvas = document.getElementById('pdf_canvas'),
+                    ctx = canvas.getContext('2d'),
+                    scale = 1.5,
+                    numPage = 1;
+
+                const GeneratePDF = numPage => {
+
+                    pdfDoc.getPage(numPage).then(page => {
+
+                        let viewport = page.getViewport({ scale: scale });
+                            canvas.height = viewport.height;
+                            canvas.width = viewport.width;
+                        
+                        let renderContext = {
+                            canvasContext : ctx,
+                            viewport:  viewport
+                        }
+
+                        page.render(renderContext);
+                    })
+
+                }
+
+
+                loadingTask.promise.then(pdfDoc_ => {
+                    pdfDoc = pdfDoc_;
+                    GeneratePDF(1)
+                });
+            }
+
+
+        </script>

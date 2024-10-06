@@ -1,0 +1,6 @@
+database/
+__pycache__
+out.json
+out.txt
+test.pdf
+test_cropped.pdf
